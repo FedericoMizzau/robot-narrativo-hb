@@ -21,12 +21,17 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 usar_openai = OPENAI_API_KEY is not None and len(OPENAI_API_KEY.strip()) > 0
 
 # Configurar generador: Prioridad ML > OpenAI > Plantillas
-# Cambiar usar_ml=True para activar GPT-2
+# Usar modelo base GPT-2 para mejor calidad (el entrenado puede tener problemas)
+# Si quieres usar el modelo entrenado, cambia "gpt2" por "./modelo_cuentos_entrenado"
+modelo_entrenado_path = "./modelo_cuentos_entrenado"
+usar_modelo_entrenado = False  # Desactivado temporalmente para mejor calidad
+# usar_modelo_entrenado = os.path.exists(modelo_entrenado_path) and os.path.isdir(modelo_entrenado_path)
+
 generador = GeneradorCuento(
     usar_api_openai=usar_openai, 
     api_key=OPENAI_API_KEY,
-    usar_ml=True,  # Activar modelo ML (GPT-2)
-    modelo_ml="gpt2"  # Puedes cambiar a "distilgpt2" para versión más rápida
+    usar_ml=True,  # Activar modelo ML
+    modelo_ml="gpt2" if not usar_modelo_entrenado else modelo_entrenado_path  # Usar GPT-2 base para mejor calidad
 )
 
 # Intentar usar gTTS, si no está disponible usar pyttsx3
@@ -63,17 +68,34 @@ def generar_cuento():
                 'error': 'Por favor, ingresa un prompt o solicitud.'
             }), 400
         
-        # Generar cuento
-        cuento = generador.generar_cuento(prompt)
-        
-        # Validar estructura
-        if not generador.validar_estructura_cuento(cuento):
+        # Generar cuento (sin truncar el prompt)
+        try:
+            cuento = generador.generar_cuento(prompt)
+        except Exception as gen_error:
+            print(f"[ERROR] Error en generación: {gen_error}")
+            import traceback
+            traceback.print_exc()
             return jsonify({
-                'error': 'No se pudo generar un cuento con estructura válida. Intenta con otro prompt.'
+                'error': f'Error al generar el cuento: {str(gen_error)}. Intenta con un prompt más corto o diferente.'
             }), 500
         
+        # Validar que el cuento tenga contenido válido
+        if not cuento or len(cuento.strip()) < 50:
+            return jsonify({
+                'error': 'El cuento generado es muy corto o está vacío. Intenta con otro prompt.'
+            }), 500
+        
+        # Validar estructura (más flexible)
+        if not generador.validar_estructura_cuento(cuento):
+            # Si no pasa la validación pero tiene contenido, permitirlo de todas formas
+            print(f"[ADVERTENCIA] Cuento no pasó validación estricta, pero se permite: {len(cuento)} caracteres")
+        
         # Generar audio
-        ruta_audio = tts_handler.texto_a_audio(cuento, guardar_archivo=True)
+        try:
+            ruta_audio = tts_handler.texto_a_audio(cuento, guardar_archivo=True)
+        except Exception as tts_error:
+            print(f"[ERROR] Error en TTS: {tts_error}")
+            ruta_audio = None
         
         respuesta = {
             'cuento': cuento,
@@ -87,6 +109,9 @@ def generar_cuento():
         return jsonify(respuesta), 200
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[ERROR] Error completo: {error_trace}")
         return jsonify({
             'error': f'Error al generar el cuento: {str(e)}'
         }), 500
@@ -151,7 +176,12 @@ if __name__ == '__main__':
     print("=" * 60)
     print("🤖 ROBOT NARRATIVO GENERATIVO - Iniciando...")
     print("=" * 60)
-    print(f"📝 Generador: {'OpenAI API' if usar_openai else 'Plantillas creativas'}")
+    if usar_modelo_entrenado:
+        print(f"📝 Generador: Modelo ML Entrenado ({modelo_entrenado_path})")
+    elif usar_openai:
+        print(f"📝 Generador: OpenAI API")
+    else:
+        print(f"📝 Generador: Modelo ML Base (GPT-2)")
     print(f"🔊 TTS: {tts_handler.metodo.upper()}")
     print("=" * 60)
     print("\n🌐 Servidor disponible en: http://localhost:5000")

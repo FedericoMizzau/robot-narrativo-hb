@@ -76,10 +76,22 @@ class GeneradorCuento:
             "Y así",
         ]
         
-        # Temas y elementos creativos
-        self.personajes = ["héroe", "explorador", "sabio", "joven aventurero", "curioso investigador"]
-        self.lugares = ["bosque encantado", "montaña misteriosa", "ciudad perdida", "isla secreta", "valle oculto"]
-        self.objetos = ["llave antigua", "mapa misterioso", "cristal brillante", "libro encantado", "amuleto mágico"]
+        # Temas y elementos creativos (expandidos para más variabilidad)
+        self.personajes = [
+            "héroe", "explorador", "sabio", "joven aventurero", "curioso investigador",
+            "valiente guerrero", "astuto inventor", "sabia anciana", "niño curioso", 
+            "artista soñador", "científico intrépido", "mago aprendiz", "viajero incansable"
+        ]
+        self.lugares = [
+            "bosque encantado", "montaña misteriosa", "ciudad perdida", "isla secreta", "valle oculto",
+            "castillo abandonado", "cueva profunda", "templo antiguo", "jardín mágico", "desierto infinito",
+            "océano desconocido", "laberinto interminable", "torre solitaria", "puente entre mundos"
+        ]
+        self.objetos = [
+            "llave antigua", "mapa misterioso", "cristal brillante", "libro encantado", "amuleto mágico",
+            "espejo mágico", "piedra luminosa", "flauta encantada", "diario secreto", "brújula dorada",
+            "espada legendaria", "corona perdida", "pergamino antiguo", "gema brillante"
+        ]
     
     def _extraer_elementos_prompt(self, prompt: str) -> Dict[str, List[str]]:
         """
@@ -122,6 +134,7 @@ class GeneradorCuento:
     def _generar_con_plantillas(self, prompt: str) -> str:
         """
         Genera un cuento usando plantillas creativas y variabilidad.
+        Mejorado para usar mejor el prompt del usuario y generar cuentos más únicos.
         
         Args:
             prompt: Solicitud del usuario
@@ -131,32 +144,84 @@ class GeneradorCuento:
         """
         elementos = self._extraer_elementos_prompt(prompt)
         
-        # Selección creativa de elementos
+        # Extraer palabras clave del prompt para personalizar el cuento
+        palabras_prompt = [p.lower() for p in prompt.split() if len(p) > 3]
+        palabras_unicas = list(set(palabras_prompt))[:5]  # Máximo 5 palabras únicas
+        
+        # Selección creativa de elementos con más variabilidad
         personaje = random.choice(self.personajes)
         lugar = random.choice(self.lugares)
         objeto = random.choice(self.objetos)
         tema = elementos["temas"][0] if elementos["temas"] else "aventura"
         
-        # Construcción del cuento con estructura narrativa
-        introduccion = f"{random.choice(self.introducciones)}, un {personaje} descubrió un {lugar}."
+        # Incorporar palabras del prompt en el cuento
+        palabra_contexto = random.choice(palabras_unicas) if palabras_unicas else None
         
-        desarrollo = (
+        # Variaciones más creativas de introducciones
+        introducciones_variadas = [
+            f"{random.choice(self.introducciones)}, un {personaje} descubrió un {lugar}.",
+            f"{random.choice(self.introducciones)}, en un {lugar}, vivía un {personaje}.",
+            f"{random.choice(self.introducciones)}, un {personaje} se encontró en un {lugar} misterioso.",
+            f"En un {lugar} lejano, {random.choice(self.introducciones).lower()} un {personaje}.",
+        ]
+        
+        introduccion = random.choice(introducciones_variadas)
+        
+        # Si hay palabras del prompt, integrarlas creativamente
+        if palabra_contexto and palabra_contexto not in [personaje, lugar, objeto]:
+            introduccion = introduccion.replace("descubrió", f"descubrió algo relacionado con {palabra_contexto}")
+        
+        # Desarrollos más variados
+        desarrollos_variados = [
             f"{random.choice(self.desarrollos)} encontró un {objeto} que cambiaría todo. "
             f"El {personaje} se embarcó en una {tema} que lo llevaría más allá de lo imaginado. "
-            f"En su camino, enfrentó desafíos que pusieron a prueba su determinación y creatividad."
-        )
+            f"En su camino, enfrentó desafíos que pusieron a prueba su determinación y creatividad.",
+            
+            f"{random.choice(self.desarrollos)} el {personaje} descubrió que el {lugar} guardaba secretos increíbles. "
+            f"Con el {objeto} en sus manos, comenzó una {tema} llena de sorpresas y descubrimientos.",
+            
+            f"El {personaje} pronto se dio cuenta de que el {lugar} no era lo que parecía. "
+            f"{random.choice(self.desarrollos)} encontró un {objeto} que despertó su curiosidad. "
+            f"Así comenzó una {tema} que transformaría su vida para siempre.",
+        ]
         
-        desenlace = (
+        desarrollo = random.choice(desarrollos_variados)
+        
+        # Desenlaces más variados
+        desenlaces_variados = [
             f"{random.choice(self.finales)} el {personaje} aprendió que la verdadera {tema} "
             f"está en encontrar soluciones innovadoras a los problemas. "
-            f"El {objeto} resultó ser solo el comienzo de una historia mucho mayor."
-        )
+            f"El {objeto} resultó ser solo el comienzo de una historia mucho mayor.",
+            
+            f"{random.choice(self.finales)} el {personaje} comprendió que cada {tema} "
+            f"es una oportunidad para demostrar creatividad. "
+            f"El {lugar} y el {objeto} fueron solo el inicio de algo extraordinario.",
+            
+            f"Al final, el {personaje} descubrió que la {tema} no era solo sobre el {objeto}, "
+            f"sino sobre el viaje mismo. {random.choice(self.finales)} todo cambió para mejor.",
+        ]
         
+        desenlace = random.choice(desenlaces_variados)
+        
+        # Construir el cuento
         cuento = f"{introduccion}\n\n{desarrollo}\n\n{desenlace}"
         
-        # Añadir variabilidad: cada ejecución puede tener pequeñas diferencias
-        if random.random() > 0.5:
-            cuento += f"\n\nY así, el {personaje} demostró que la creatividad puede transformar cualquier situación."
+        # Añadir variabilidad adicional con frases finales opcionales
+        frases_finales = [
+            f"\n\nY así, el {personaje} demostró que la creatividad puede transformar cualquier situación.",
+            f"\n\nDesde entonces, el {personaje} supo que cada desafío es una oportunidad para crear algo nuevo.",
+            f"\n\nEl {personaje} aprendió que la verdadera magia está en ver las cosas de manera diferente.",
+            f"\n\nY de esta forma, el {personaje} se convirtió en un ejemplo de cómo la creatividad puede cambiar el mundo.",
+        ]
+        
+        if random.random() > 0.3:  # 70% de probabilidad de añadir frase final
+            cuento += random.choice(frases_finales)
+        
+        # Añadir un toque único basado en el prompt
+        if palabras_unicas and random.random() > 0.7:  # 30% de probabilidad
+            palabra_extra = random.choice(palabras_unicas)
+            if palabra_extra not in cuento.lower():
+                cuento = cuento.replace(".", f", relacionado con {palabra_extra}.", 1)
         
         return cuento
     
@@ -219,15 +284,25 @@ class GeneradorCuento:
             try:
                 cuento_ml = self.generador_ml.generar_cuento(
                     prompt, 
-                    max_length=250,
-                    temperature=0.8,
-                    top_p=0.9
+                    max_length=400,  # Aumentado para cuentos más completos
+                    temperature=0.9,  # Más creatividad
+                    top_p=0.95,
+                    traducir=True  # Activar traducción para mejor calidad
                 )
-                # Validar que el cuento generado sea razonable
-                if cuento_ml and len(cuento_ml.strip()) > 50:
-                    return cuento_ml
+                # Validar que el cuento generado sea razonable y relevante
+                if cuento_ml and len(cuento_ml.strip()) > 100:  # Mínimo aumentado
+                    # Verificar que el cuento tenga relación con el prompt
+                    palabras_prompt = set(prompt.lower().split())
+                    palabras_cuento = set(cuento_ml.lower().split())
+                    # Al menos algunas palabras del prompt deben aparecer en el cuento
+                    palabras_comunes = palabras_prompt.intersection(palabras_cuento)
+                    if len(palabras_comunes) >= 2 or len(cuento_ml.strip()) > 200:
+                        return cuento_ml
+                    else:
+                        print(f"[ADVERTENCIA] Cuento generado no parece relacionado con el prompt")
+                        print(f"   Palabras comunes: {len(palabras_comunes)}")
                 else:
-                    print("⚠️  Modelo ML generó texto muy corto, usando respaldo")
+                    print("[ADVERTENCIA] Modelo ML genero texto muy corto, usando respaldo")
             except Exception as e:
                 print(f"⚠️  Error con modelo ML: {e}, usando respaldo")
         
@@ -241,6 +316,7 @@ class GeneradorCuento:
     def validar_estructura_cuento(self, cuento: str) -> bool:
         """
         Valida que el cuento tenga una estructura narrativa adecuada.
+        Validación más flexible para permitir más variaciones.
         
         Args:
             cuento: Texto del cuento a validar
@@ -248,15 +324,25 @@ class GeneradorCuento:
         Returns:
             True si tiene estructura válida, False en caso contrario
         """
-        if not cuento or len(cuento.strip()) < 100:
+        if not cuento or len(cuento.strip()) < 50:  # Reducido de 100 a 50
+            return False
+        
+        # Verificar que tenga contenido sustancial (más de 3 oraciones)
+        oraciones = [s.strip() for s in cuento.split('.') if s.strip()]
+        if len(oraciones) < 3:
             return False
         
         # Verificar que tenga al menos algunos elementos de estructura narrativa
-        tiene_introduccion = any(palabra in cuento.lower() for palabra in 
-                                ["érase", "había", "era", "cuenta", "hace"])
-        tiene_desarrollo = len(cuento.split(".")) >= 3
-        tiene_cierre = any(palabra in cuento.lower() for palabra in 
-                          ["finalmente", "así", "desde", "entonces"])
+        # Más flexible: solo necesita tener algunas palabras narrativas
+        palabras_narrativas = [
+            "érase", "había", "era", "cuenta", "hace", "una vez",
+            "entonces", "después", "finalmente", "así", "desde",
+            "personaje", "protagonista", "aventura", "historia"
+        ]
+        tiene_elementos_narrativos = any(
+            palabra in cuento.lower() for palabra in palabras_narrativas
+        )
         
-        return tiene_introduccion and tiene_desarrollo
+        # Si tiene elementos narrativos y suficientes oraciones, es válido
+        return tiene_elementos_narrativos or len(oraciones) >= 5
 
