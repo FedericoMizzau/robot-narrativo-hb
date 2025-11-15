@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Narrativo Generativo - Creatividad</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Robot Narrativo Generativo</h1>
+            <p class="subtitle">Demostrando Creatividad a través de la Narrativa</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <label for="prompt-input">Ingresa tu solicitud o prompt:</label>
+                <textarea 
+                    id="prompt-input" 
+                    placeholder="Ejemplo: 'Un cuento sobre un robot que descubre la creatividad' o 'Una aventura en un bosque mágico'"
+                    rows="4"
+                ></textarea>
+                <button id="btn-generar" onclick="generarCuento()">
+                    ✨ Generar Cuento
+                </button>
+            </div>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>El robot está creando tu cuento creativo...</p>
+            </div>
+
+            <div id="resultado" class="resultado hidden">
+                <h2>📖 Cuento Generado:</h2>
+                <div id="cuento-texto" class="cuento-texto"></div>
+                
+                <div class="audio-controls">
+                    <button id="btn-reproducir" onclick="reproducirAudio()" class="btn-audio">
+                        🔊 Escuchar Narración
+                    </button>
+                    <p id="audio-status" class="audio-status hidden"></p>
+                </div>
+
+                <button id="btn-nuevo" onclick="nuevoCuento()" class="btn-secundario">
+                    🆕 Generar Otro Cuento
+                </button>
+            </div>
+
+            <div id="error" class="error hidden">
+                <p id="error-mensaje"></p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Trabajo Práctico - Habilidades Blandas | Creatividad</p>
+        </footer>
+    </div>
+
+    <script>
+        let audioPathActual = null;
+
+        async function generarCuento() {
+            const promptInput = document.getElementById('prompt-input');
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                mostrarError('Por favor, ingresa un prompt o solicitud.');
+                return;
+            }
+
+            // Ocultar resultados anteriores y mostrar loading
+            ocultarElementos();
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('btn-generar').disabled = true;
+
+            try {
+                const response = await fetch('/generar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error al generar el cuento');
+                }
+
+                // Mostrar resultado
+                document.getElementById('cuento-texto').textContent = data.cuento;
+                audioPathActual = data.audio_path || null;
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('resultado').classList.remove('hidden');
+                
+                // Limpiar cualquier elemento de audio anterior
+                const audioElementAnterior = document.getElementById('audio-element');
+                if (audioElementAnterior) {
+                    audioElementAnterior.remove();
+                }
+
+            } catch (error) {
+                mostrarError(error.message);
+            } finally {
+                document.getElementById('btn-generar').disabled = false;
+            }
+        }
+
+        async function reproducirAudio() {
+            if (!audioPathActual) {
+                mostrarError('No hay audio disponible para reproducir.');
+                return;
+            }
+
+            const btnReproducir = document.getElementById('btn-reproducir');
+            const audioStatus = document.getElementById('audio-status');
+            const audioControls = document.querySelector('.audio-controls');
+            
+            if (!btnReproducir || !audioStatus || !audioControls) {
+                mostrarError('Error: elementos de la interfaz no encontrados.');
+                return;
+            }
+            
+            btnReproducir.disabled = true;
+            btnReproducir.textContent = '⏳ Generando audio...';
+            audioStatus.textContent = 'El audio se está generando, por favor espera...';
+            audioStatus.classList.remove('hidden');
+
+            try {
+                // Primero intentar reproducir directamente desde el servidor
+                const nombreArchivo = audioPathActual.split(/[/\\]/).pop();
+                const audioUrl = `/static/audio/${nombreArchivo}`;
+                
+                // Crear elemento de audio dinámicamente
+                let audioElement = document.getElementById('audio-element');
+                if (audioElement) {
+                    audioElement.remove();
+                }
+                
+                audioElement = document.createElement('audio');
+                audioElement.id = 'audio-element';
+                audioElement.controls = true;
+                audioElement.style.width = '100%';
+                audioElement.style.marginTop = '15px';
+                audioControls.appendChild(audioElement);
+                
+                audioElement.src = audioUrl;
+                audioElement.load();
+                
+                audioElement.oncanplay = function() {
+                    btnReproducir.textContent = '🔊 Reproducir Narración';
+                    btnReproducir.disabled = false;
+                    audioStatus.textContent = 'Audio listo. Haz clic en el botón de reproducción del reproductor.';
+                };
+                
+                audioElement.onerror = function() {
+                    // Si falla, intentar con el endpoint de reproducción del servidor
+                    audioStatus.textContent = 'Intentando reproducir desde el servidor...';
+                    fetch('/reproducir', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ audio_path: audioPathActual })
+                    }).then(response => response.json())
+                      .then(data => {
+                          if (data.mensaje) {
+                              btnReproducir.textContent = '✅ Audio reproducido';
+                              audioStatus.textContent = 'El audio se está reproduciendo en tu sistema.';
+                              setTimeout(() => {
+                                  btnReproducir.textContent = '🔊 Escuchar Narración';
+                                  audioStatus.classList.add('hidden');
+                              }, 3000);
+                          } else if (data.error) {
+                              mostrarError(data.error);
+                              btnReproducir.disabled = false;
+                              btnReproducir.textContent = '🔊 Escuchar Narración';
+                          }
+                      })
+                      .catch(err => {
+                          mostrarError('No se pudo reproducir el audio. El archivo puede no haberse generado correctamente.');
+                          btnReproducir.disabled = false;
+                          btnReproducir.textContent = '🔊 Escuchar Narración';
+                      });
+                };
+
+            } catch (error) {
+                mostrarError('Error al reproducir audio: ' + error.message);
+                btnReproducir.disabled = false;
+                btnReproducir.textContent = '🔊 Escuchar Narración';
+                audioStatus.classList.add('hidden');
+            }
+        }
+
+        function nuevoCuento() {
+            ocultarElementos();
+            document.getElementById('prompt-input').value = '';
+            document.getElementById('prompt-input').focus();
+        }
+
+        function mostrarError(mensaje) {
+            ocultarElementos();
+            document.getElementById('error-mensaje').textContent = mensaje;
+            document.getElementById('error').classList.remove('hidden');
+        }
+
+        function ocultarElementos() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('resultado').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+        }
+
+        // Permitir generar con Enter (Ctrl+Enter)
+        document.getElementById('prompt-input').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generarCuento();
+            }
+        });
+    </script>
+</body>
+</html>
+

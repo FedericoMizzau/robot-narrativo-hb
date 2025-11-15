@@ -1,0 +1,27 @@
+# Dependencias para usar modelos de Machine Learning
+# Instalar solo si quieres usar generación con GPT-2 u otros modelos
+
+# Requisitos básicos
+flask>=2.3.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Para generación con modelos ML
+transformers>=4.30.0
+torch>=2.0.0
+accelerate>=0.26.0
+
+# Para descargar datasets (opcional)
+# datasets>=2.0.0  # Descomentar si quieres descargar desde Hugging Face
+
+# Para TTS (opcional)
+gtts>=2.3.0
+pyttsx3>=2.90
+
+# Para OpenAI API (opcional)
+openai>=1.0.0
+
+# Nota: torch puede ser pesado (~500MB)
+# Si tienes GPU NVIDIA, instala versión con CUDA:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+

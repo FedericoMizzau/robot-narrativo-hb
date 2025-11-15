@@ -1,0 +1,62 @@
+╔══════════════════════════════════════════════════════════════╗
+║  🎓 INSTRUCCIONES RÁPIDAS PARA ENTRENAR EL MODELO           ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ DATASET PROCESADO EXITOSAMENTE
+───────────────────────────────────────────────────────────────
+📊 1,827 cuentos únicos procesados
+📝 1,753,298 palabras totales
+💾 Archivo: data/cuentos_procesados.txt (8.99 MB)
+
+───────────────────────────────────────────────────────────────
+
+🚀 ENTRENAR EL MODELO (PASO 1)
+───────────────────────────────────────────────────────────────
+cd robot_narrativo
+source venv/Scripts/activate
+python entrenar_modelo_cuentos.py
+
+O manualmente:
+python fine_tuning.py data/cuentos_procesados.txt --epochs 3
+
+───────────────────────────────────────────────────────────────
+
+⏱️  TIEMPO ESTIMADO
+───────────────────────────────────────────────────────────────
+Con GPU:    2-3 horas
+Sin GPU:   6-8 horas
+
+───────────────────────────────────────────────────────────────
+
+📁 MODELO ENTRENADO
+───────────────────────────────────────────────────────────────
+Se guardará en: modelo_cuentos_entrenado/
+
+───────────────────────────────────────────────────────────────
+
+🔧 USAR EL MODELO (PASO 2)
+───────────────────────────────────────────────────────────────
+En app.py, línea 29, cambiar:
+
+modelo_ml="gpt2"  →  modelo_ml="./modelo_cuentos_entrenado"
+
+───────────────────────────────────────────────────────────────
+
+✨ PROBAR (PASO 3)
+───────────────────────────────────────────────────────────────
+python app.py
+Abrir: http://localhost:5000
+
+───────────────────────────────────────────────────────────────
+
+💡 CONSEJOS
+───────────────────────────────────────────────────────────────
+- Si tienes GPU: Usa 3 épocas (mejor calidad)
+- Si solo CPU: Usa 2 épocas o menos
+- Para pruebas rápidas: Entrena con muestra pequeña primero
+- El entrenamiento se puede interrumpir (Ctrl+C) y reanudar
+
+───────────────────────────────────────────────────────────────
+
+╚══════════════════════════════════════════════════════════════╝
+

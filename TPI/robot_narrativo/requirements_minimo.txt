@@ -1,0 +1,13 @@
+# Dependencias mínimas para el Robot Narrativo
+# Si tienes problemas con requirements.txt, usa este archivo
+
+flask>=2.3.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Opcionales (instalar solo si están disponibles):
+# gtts>=2.3.0          # Para TTS online (requiere internet)
+# pyttsx3>=2.90        # Para TTS offline
+# openai>=1.0.0        # Para generación con IA (opcional)
+
+
