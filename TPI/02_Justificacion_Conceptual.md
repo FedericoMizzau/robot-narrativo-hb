@@ -140,17 +140,11 @@ El proceso de diseño comenzó con la identificación de los componentes clave d
 
 ### 4.2 Desafíos Encontrados
 
-- **Balance entre originalidad y coherencia:** Asegurar que los cuentos sean creativos pero también coherentes
-- **Variabilidad:** Implementar mecanismos que generen resultados diferentes cada vez
-- **Estructura narrativa:** Garantizar que cada cuento tenga formato completo de cuento
-- **Integración tecnológica:** Coordinar generación de texto, validación y síntesis de voz
+Durante el desarrollo del proyecto, enfrentamos varios desafíos significativos que requirieron reflexión y ajustes en el diseño. Uno de los principales retos fue encontrar el **balance entre originalidad y coherencia**, asegurando que los cuentos generados fueran creativos y únicos, pero también coherentes y comprensibles. La implementación de mecanismos que generaran **variabilidad** en los resultados fue otro desafío importante, ya que necesitábamos garantizar que cada generación fuera diferente, incluso con prompts similares. Además, fue crucial **garantizar la estructura narrativa** completa en cada cuento, asegurando que tuviera introducción, desarrollo y desenlace, lo cual requería validación y ajustes en el proceso de generación. Finalmente, la **integración tecnológica** de múltiples componentes (generación de texto, validación de estructura y síntesis de voz) demandó una coordinación cuidadosa para que todos los elementos funcionaran de manera fluida y sincronizada.
 
 ### 4.3 Aprendizajes
 
-- La creatividad puede ser modelada mediante algoritmos que introducen variabilidad y combinación
-- La estructura es importante incluso en procesos creativos: la creatividad no es caos, sino innovación dentro de marcos
-- La observabilidad es clave: una habilidad blanda debe poder demostrarse de manera tangible
-- La tecnología puede ser un medio efectivo para representar habilidades humanas
+A lo largo de este proyecto, obtuvimos aprendizajes valiosos sobre la naturaleza de la creatividad y su representación mediante sistemas tecnológicos. Descubrimos que **la creatividad puede ser modelada mediante algoritmos** que introducen variabilidad y combinación de elementos, demostrando que los procesos creativos no son completamente aleatorios sino que pueden seguir patrones y estructuras identificables. Comprendimos que **la estructura es fundamental incluso en procesos creativos**, reconociendo que la creatividad no es caos desorganizado, sino innovación dentro de marcos y límites que proporcionan coherencia y sentido. También aprendimos que **la observabilidad es clave** para representar habilidades blandas, ya que una habilidad como la creatividad debe poder demostrarse de manera tangible y medible para ser comprendida y evaluada. Por último, confirmamos que **la tecnología puede ser un medio efectivo** para representar y modelar habilidades humanas complejas, abriendo posibilidades para el desarrollo de sistemas que complementen y potencien las capacidades humanas.
 
 ### 4.4 Aplicación en Contextos Profesionales
 

@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot Narrativo Generativo - Creatividad</title>
+    <title>Creatrón Narrativo V1</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🤖 Robot Narrativo Generativo</h1>
+            <h1>Creatrón Narrativo V1</h1>
             <p class="subtitle">Demostrando Creatividad a través de la Narrativa</p>
         </header>
 
@@ -21,8 +21,27 @@
                     placeholder="Ejemplo: 'Un cuento sobre un robot que descubre la creatividad' o 'Una aventura en un bosque mágico'"
                     rows="4"
                 ></textarea>
+                
+                <div class="duracion-selector">
+                    <label>Duración del cuento:</label>
+                    <div class="duracion-options">
+                        <label class="duracion-option">
+                            <input type="radio" name="duracion" value="corto" checked>
+                            <span>📖 Corto (~2 min)</span>
+                        </label>
+                        <label class="duracion-option">
+                            <input type="radio" name="duracion" value="medio">
+                            <span>📚 Medio (~5 min)</span>
+                        </label>
+                        <label class="duracion-option">
+                            <input type="radio" name="duracion" value="largo">
+                            <span>📜 Largo (~10 min)</span>
+                        </label>
+                    </div>
+                </div>
+                
                 <button id="btn-generar" onclick="generarCuento()">
-                    ✨ Generar Cuento
+                    Generar Cuento
                 </button>
             </div>
 
@@ -32,7 +51,7 @@
             </div>
 
             <div id="resultado" class="resultado hidden">
-                <h2>📖 Cuento Generado:</h2>
+                <h2>Cuento Generado:</h2>
                 <div id="cuento-texto" class="cuento-texto"></div>
                 
                 <div class="audio-controls">
@@ -64,6 +83,10 @@
             const promptInput = document.getElementById('prompt-input');
             const prompt = promptInput.value.trim();
             
+            // Obtener duración seleccionada
+            const duracionInput = document.querySelector('input[name="duracion"]:checked');
+            const duracion = duracionInput ? duracionInput.value : 'medio';
+            
             if (!prompt) {
                 mostrarError('Por favor, ingresa un prompt o solicitud.');
                 return;
@@ -80,7 +103,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ prompt: prompt })
+                    body: JSON.stringify({ 
+                        prompt: prompt,
+                        duracion: duracion
+                    })
                 });
 
                 const data = await response.json();

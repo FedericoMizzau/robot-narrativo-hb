@@ -16,6 +16,7 @@ class GeneradorCuento:
     """
     
     def __init__(self, usar_api_openai: bool = False, api_key: Optional[str] = None,
+                 usar_api_gemini: bool = False, gemini_api_key: Optional[str] = None,
                  usar_ml: bool = False, modelo_ml: str = "gpt2"):
         """
         Inicializa el generador de cuentos.
@@ -23,11 +24,15 @@ class GeneradorCuento:
         Args:
             usar_api_openai: Si True, usa OpenAI API. Si False, usa generación basada en plantillas.
             api_key: Clave de API de OpenAI (requerida si usar_api_openai=True)
+            usar_api_gemini: Si True, usa Google Gemini API. Si False, usa otros métodos.
+            gemini_api_key: Clave de API de Gemini (requerida si usar_api_gemini=True)
             usar_ml: Si True, intenta usar modelo de ML (GPT-2). Requiere transformers instalado.
             modelo_ml: Nombre del modelo ML a usar ("gpt2", "distilgpt2", etc.)
         """
         self.usar_api_openai = usar_api_openai
         self.api_key = api_key
+        self.usar_api_gemini = usar_api_gemini
+        self.gemini_api_key = gemini_api_key
         self.usar_ml = usar_ml
         self.modelo_ml = modelo_ml
         self.generador_ml = None
@@ -225,12 +230,13 @@ class GeneradorCuento:
         
         return cuento
     
-    def _generar_con_openai(self, prompt: str) -> str:
+    def _generar_con_openai(self, prompt: str, duracion: str = "medio") -> str:
         """
         Genera un cuento usando la API de OpenAI.
         
         Args:
             prompt: Solicitud del usuario
+            duracion: Duración del cuento ("corto", "medio", "largo")
             
         Returns:
             Cuento generado
@@ -238,40 +244,422 @@ class GeneradorCuento:
         try:
             from openai import OpenAI
             
-            client = OpenAI(api_key=self.api_key)
+            # Limpiar la API key antes de usarla
+            api_key_limpia = self.api_key.strip() if self.api_key else None
+            if not api_key_limpia:
+                raise ValueError("API key de OpenAI no proporcionada")
             
+            client = OpenAI(api_key=api_key_limpia)
+            
+            # Configuraciones según duración
+            configuraciones = {
+                "corto": {
+                    "palabras": "150-200",
+                    "max_tokens": 300,
+                    "descripcion": "un cuento breve y conciso"
+                },
+                "medio": {
+                    "palabras": "400-500",
+                    "max_tokens": 700,
+                    "descripcion": "un cuento de longitud media"
+                },
+                "largo": {
+                    "palabras": "800-1000",
+                    "max_tokens": 1400,
+                    "descripcion": "un cuento extenso y detallado"
+                }
+            }
+            config = configuraciones.get(duracion, configuraciones["medio"])
+            
+            # Prompt del sistema mejorado para mejor calidad
             prompt_sistema = (
-                "Eres un narrador creativo. Genera un cuento original en español con estructura narrativa completa "
-                "(introducción, desarrollo, desenlace). El cuento debe tener entre 150 y 300 palabras, "
-                "ser creativo, original y tener un formato de cuento tradicional. "
-                "Responde SOLO con el cuento, sin explicaciones adicionales."
+                "Eres un narrador creativo y experto en escribir cuentos. "
+                "Genera {descripcion} en español de {palabras} palabras con estructura narrativa completa "
+                "(introducción, desarrollo, desenlace). "
+                "Requisitos:\n"
+                "- Estructura: introducción, desarrollo con conflictos, desenlace satisfactorio\n"
+                "- Estilo: descripciones vívidas, diálogos naturales, elementos sensoriales, ritmo variado\n"
+                "- Calidad: español fluido, coherencia, originalidad, apropiado para todas las edades\n"
+                "- IMPORTANTE: Responde SOLO con el cuento, sin títulos ni explicaciones. Comienza directamente con la narrativa."
+            ).format(
+                descripcion=config["descripcion"],
+                palabras=config["palabras"]
             )
             
-            respuesta = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": prompt_sistema},
-                    {"role": "user", "content": f"Genera un cuento sobre: {prompt}"}
-                ],
-                max_tokens=400,
-                temperature=0.8  # Mayor creatividad
-            )
+            # Prompt del usuario más específico
+            prompt_usuario = f"Escribe un cuento creativo sobre: {prompt}"
             
-            cuento = respuesta.choices[0].message.content.strip()
-            return cuento
+            print(f"[DEBUG] Prompt sistema: {prompt_sistema[:100]}...")
+            print(f"[DEBUG] Prompt usuario: {prompt_usuario}")
+            print(f"[DEBUG] Duración: {duracion} ({config['palabras']} palabras)")
+            
+            # Usar gpt-4o-mini (modelo válido y económico)
+            modelo = "gpt-4o-mini"
+            print(f"[DEBUG] Enviando UNA solicitud con modelo: {modelo}")
+            
+            try:
+                respuesta = client.chat.completions.create(
+                    model=modelo,
+                    messages=[
+                        {"role": "system", "content": prompt_sistema},
+                        {"role": "user", "content": prompt_usuario}
+                    ],
+                    max_tokens=config["max_tokens"],
+                    temperature=0.85  # Balance entre creatividad y coherencia
+                )
+                
+                # Loguear información completa de la primera respuesta
+                print(f"\n{'='*60}")
+                print(f"[RESPONSE] Información de la respuesta:")
+                print(f"{'='*60}")
+                print(f"[RESPONSE] Modelo usado: {modelo}")
+                print(f"[RESPONSE] ID: {respuesta.id}")
+                print(f"[RESPONSE] Objeto: {respuesta.object}")
+                print(f"[RESPONSE] Creado: {respuesta.created}")
+                
+                # Información de uso de tokens
+                if hasattr(respuesta, 'usage') and respuesta.usage:
+                    print(f"[RESPONSE] Tokens usados:")
+                    print(f"  - Prompt tokens: {respuesta.usage.prompt_tokens}")
+                    print(f"  - Completion tokens: {respuesta.usage.completion_tokens}")
+                    print(f"  - Total tokens: {respuesta.usage.total_tokens}")
+                
+                # Intentar obtener headers de rate limit si están disponibles
+                try:
+                    # Los headers pueden estar en la respuesta raw si está disponible
+                    if hasattr(respuesta, '_response') and hasattr(respuesta._response, 'headers'):
+                        headers = respuesta._response.headers
+                        print(f"\n[RESPONSE] Rate Limit Headers:")
+                        rate_limit_headers = {
+                            'x-ratelimit-limit-requests': headers.get('x-ratelimit-limit-requests', 'N/A'),
+                            'x-ratelimit-limit-tokens': headers.get('x-ratelimit-limit-tokens', 'N/A'),
+                            'x-ratelimit-remaining-requests': headers.get('x-ratelimit-remaining-requests', 'N/A'),
+                            'x-ratelimit-remaining-tokens': headers.get('x-ratelimit-remaining-tokens', 'N/A'),
+                            'x-ratelimit-reset-requests': headers.get('x-ratelimit-reset-requests', 'N/A'),
+                            'x-ratelimit-reset-tokens': headers.get('x-ratelimit-reset-tokens', 'N/A'),
+                        }
+                        for key, value in rate_limit_headers.items():
+                            print(f"  - {key}: {value}")
+                except Exception as e_headers:
+                    print(f"[RESPONSE] No se pudieron obtener headers de rate limit: {e_headers}")
+                
+                print(f"{'='*60}\n")
+                
+                cuento = respuesta.choices[0].message.content.strip()
+                print(f"[OK] Cuento generado ({len(cuento)} caracteres)")
+                return cuento
+                
+            except Exception as e_solicitud:
+                # Capturar información detallada del error
+                error_msg = str(e_solicitud)
+                print(f"\n{'='*60}")
+                print(f"[ERROR] Error en la solicitud:")
+                print(f"{'='*60}")
+                print(f"[ERROR] Mensaje: {error_msg}")
+                
+                # Intentar extraer información de headers y respuesta del error
+                try:
+                    if hasattr(e_solicitud, 'response'):
+                        response = e_solicitud.response
+                        
+                        # Headers de rate limit del error
+                        if hasattr(response, 'headers'):
+                            headers = dict(response.headers)
+                            print(f"\n[ERROR] Rate Limit Headers del error:")
+                            rate_limit_keys = [
+                                'x-ratelimit-limit-requests',
+                                'x-ratelimit-limit-tokens',
+                                'x-ratelimit-remaining-requests',
+                                'x-ratelimit-remaining-tokens',
+                                'x-ratelimit-reset-requests',
+                                'x-ratelimit-reset-tokens',
+                                'retry-after'
+                            ]
+                            for key in rate_limit_keys:
+                                if key in headers:
+                                    print(f"  - {key}: {headers[key]}")
+                        
+                        # Información del error JSON
+                        if hasattr(response, 'json'):
+                            try:
+                                error_json = response.json()
+                                print(f"\n[ERROR] Detalles del error JSON:")
+                                import json
+                                print(json.dumps(error_json, indent=2, ensure_ascii=False))
+                                
+                                # Distinguir entre rate limit y quota
+                                if 'error' in error_json:
+                                    error_info = error_json['error']
+                                    error_type = error_info.get('type', '')
+                                    error_code = error_info.get('code', '')
+                                    
+                                    if 'rate_limit' in error_type.lower() or 'rate_limit' in error_code.lower():
+                                        print(f"\n[DIAGNOSTICO] Error 429 - RATE LIMIT (demasiadas solicitudes)")
+                                        print("   Causa: Estás enviando solicitudes demasiado rápido")
+                                        print("   Solución: Espera antes de enviar otra solicitud")
+                                        if 'retry-after' in headers:
+                                            print(f"   Espera {headers['retry-after']} segundos antes de reintentar")
+                                    elif 'quota' in error_type.lower() or 'quota' in error_code.lower() or 'insufficient_quota' in error_code.lower():
+                                        print(f"\n[DIAGNOSTICO] Error 429 - INSUFFICIENT QUOTA (sin créditos)")
+                                        print("   Causa: No hay créditos disponibles o límite de gasto alcanzado")
+                                        print("   Solución: Verifica tu cuenta en https://platform.openai.com/account/billing")
+                            except:
+                                pass
+                        
+                        # Status code
+                        if hasattr(response, 'status_code'):
+                            print(f"\n[ERROR] Status Code: {response.status_code}")
+                    
+                except Exception as e_debug:
+                    print(f"[ERROR] No se pudo extraer información detallada: {e_debug}")
+                
+                print(f"{'='*60}\n")
+                raise e_solicitud
             
         except Exception as e:
-            print(f"Error al generar con OpenAI: {e}")
+            # El error ya fue logueado en detalle dentro del try anterior
+            # Aquí solo hacemos el fallback
+            import traceback
+            traceback.print_exc()
             # Fallback a generación con plantillas
             return self._generar_con_plantillas(prompt)
     
-    def generar_cuento(self, prompt: str) -> str:
+    def _generar_con_gemini(self, prompt: str, duracion: str = "medio") -> str:
         """
-        Método principal para generar un cuento basado en el prompt.
-        Prioridad: ML > OpenAI > Plantillas
+        Genera un cuento usando la API de Google Gemini.
         
         Args:
             prompt: Solicitud del usuario
+            duracion: Duración del cuento ("corto", "medio", "largo")
+            
+        Returns:
+            Cuento generado
+        """
+        try:
+            import google.generativeai as genai
+            
+            # Limpiar la API key antes de usarla
+            api_key_limpia = self.gemini_api_key.strip() if self.gemini_api_key else None
+            if not api_key_limpia:
+                raise ValueError("API key de Gemini no proporcionada")
+            
+            # Configurar la API key
+            genai.configure(api_key=api_key_limpia)
+            
+            # Configurar el modelo (gemini-2.5-flash es rápido y eficiente)
+            # Alternativas: gemini-pro-latest, gemini-2.5-pro
+            modelo_nombre = 'gemini-2.5-flash'
+            modelo = genai.GenerativeModel(modelo_nombre)
+            
+            # Validar y truncar prompt del usuario si es muy largo (máx ~500 caracteres)
+            # Esto evita que el prompt del usuario consuma demasiados tokens
+            prompt_original = prompt
+            if len(prompt) > 500:
+                print(f"[ADVERTENCIA] Prompt muy largo ({len(prompt)} caracteres), truncando a 500")
+                prompt = prompt[:500].rsplit(' ', 1)[0]  # Truncar en el último espacio completo
+                print(f"[INFO] Prompt truncado a: '{prompt}...'")
+            
+            # Configurar parámetros según duración
+            # Nota: gemini-2.5-flash tiene límite de contexto, debemos balancear input/output tokens
+            configuraciones = {
+                "corto": {
+                    "palabras": "150-200",
+                    "max_tokens": 300,  # Reducido para dejar espacio al input
+                    "descripcion": "un cuento breve y conciso"
+                },
+                "medio": {
+                    "palabras": "400-500",
+                    "max_tokens": 700,  # Reducido para dejar espacio al input
+                    "descripcion": "un cuento de longitud media"
+                },
+                "largo": {
+                    "palabras": "800-1000",
+                    "max_tokens": 1400,  # Reducido para dejar espacio al input
+                    "descripcion": "un cuento extenso y detallado"
+                }
+            }
+            
+            config = configuraciones.get(duracion, configuraciones["medio"])
+            
+            # Prompt optimizado y conciso para evitar MAX_TOKENS
+            # Mantiene las instrucciones esenciales pero más compacto
+            prompt_completo = (
+                "Eres un narrador experto. Escribe {descripcion} en español de {palabras} palabras sobre: {prompt}\n\n"
+                "Requisitos:\n"
+                "- Estructura: introducción, desarrollo con conflictos, desenlace satisfactorio\n"
+                "- Estilo: descripciones vívidas, diálogos naturales, elementos sensoriales, ritmo variado\n"
+                "- Calidad: español fluido, coherencia, originalidad, apropiado para todas las edades\n"
+                "- IMPORTANTE: Responde SOLO con el cuento, sin títulos ni explicaciones. Comienza directamente con la narrativa."
+            ).format(
+                descripcion=config["descripcion"],
+                palabras=config["palabras"],
+                prompt=prompt
+            )
+            
+            # Calcular tokens aproximados del prompt (estimación: ~1 token = 4 caracteres en español)
+            prompt_tokens_estimados = len(prompt_completo) // 4
+            total_estimado = prompt_tokens_estimados + config['max_tokens']
+            print(f"[DEBUG] Enviando UNA solicitud a Gemini")
+            print(f"[DEBUG] Prompt tokens estimados: ~{prompt_tokens_estimados}")
+            print(f"[DEBUG] Max output tokens: {config['max_tokens']}")
+            print(f"[DEBUG] Total estimado: ~{total_estimado} tokens")
+            
+            # Advertencia si el total estimado es muy alto
+            if total_estimado > 8000:
+                print(f"[ADVERTENCIA] Total de tokens estimado muy alto ({total_estimado}), puede causar MAX_TOKENS")
+            
+            print(f"[DEBUG] Prompt: '{prompt_completo[:150]}...'")
+            
+            try:
+                # Generar respuesta con configuración según duración
+                # Usar max_output_tokens más conservador para evitar límites
+                respuesta = modelo.generate_content(
+                    prompt_completo,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.85,  # Balance entre creatividad y coherencia
+                        top_p=0.95,
+                        top_k=40,
+                        max_output_tokens=config["max_tokens"],  # Ajustado según duración
+                    )
+                )
+                
+                # Loguear información completa de la primera respuesta
+                print(f"\n{'='*60}")
+                print(f"[RESPONSE] Información de la respuesta:")
+                print(f"{'='*60}")
+                print(f"[RESPONSE] Modelo usado: {modelo_nombre}")
+                
+                # Información de uso de tokens si está disponible
+                if hasattr(respuesta, 'usage_metadata'):
+                    usage = respuesta.usage_metadata
+                    print(f"[RESPONSE] Tokens usados:")
+                    if hasattr(usage, 'prompt_token_count'):
+                        print(f"  - Prompt tokens: {usage.prompt_token_count}")
+                    if hasattr(usage, 'candidates_token_count'):
+                        print(f"  - Completion tokens: {usage.candidates_token_count}")
+                    if hasattr(usage, 'total_token_count'):
+                        print(f"  - Total tokens: {usage.total_token_count}")
+                
+                # Verificar que haya candidatos en la respuesta
+                if not respuesta.candidates:
+                    raise ValueError("Gemini no generó candidatos")
+                
+                # Verificar el finish_reason
+                candidato = respuesta.candidates[0]
+                finish_reason = candidato.finish_reason
+                
+                # Obtener el texto generado de forma segura desde los candidatos
+                # No usar respuesta.text directamente porque puede lanzar error si finish_reason != STOP
+                cuento = None
+                try:
+                    # Intentar obtener texto desde la propiedad text (solo funciona si finish_reason == STOP)
+                    if finish_reason == 1:  # STOP
+                        cuento = respuesta.text.strip() if respuesta.text else None
+                    else:
+                        # Si finish_reason no es STOP, extraer texto directamente de las partes del candidato
+                        if hasattr(candidato, 'content') and candidato.content:
+                            partes_texto = []
+                            for parte in candidato.content.parts:
+                                if hasattr(parte, 'text') and parte.text:
+                                    partes_texto.append(parte.text)
+                            if partes_texto:
+                                cuento = ' '.join(partes_texto).strip()
+                except (ValueError, AttributeError) as e:
+                    # Si falla al acceder a respuesta.text, intentar desde candidato.content
+                    print(f"[DEBUG] Error al acceder a respuesta.text: {e}, intentando desde candidato.content")
+                    if hasattr(candidato, 'content') and candidato.content:
+                        partes_texto = []
+                        for parte in candidato.content.parts:
+                            if hasattr(parte, 'text') and parte.text:
+                                partes_texto.append(parte.text)
+                        if partes_texto:
+                            cuento = ' '.join(partes_texto).strip()
+                
+                # Procesar el texto obtenido según finish_reason
+                if cuento:
+                    # Si terminó por MAX_TOKENS pero hay contenido, usar lo generado
+                    if finish_reason == 2:  # MAX_TOKENS
+                        print(f"[ADVERTENCIA] Generación truncada por límite de tokens")
+                        print(f"[INFO] Usando texto parcial generado ({len(cuento)} caracteres)")
+                        # Intentar cerrar el cuento si es posible
+                        if not cuento.endswith('.') and not cuento.endswith('!') and not cuento.endswith('?'):
+                            # Buscar el último punto para cerrar la última oración
+                            ultimo_punto = cuento.rfind('.')
+                            if ultimo_punto > len(cuento) * 0.7:  # Si el último punto está en el 70% final
+                                cuento = cuento[:ultimo_punto + 1]
+                            else:
+                                cuento += "."
+                        print(f"{'='*60}\n")
+                        print(f"[OK] Cuento generado (parcial, {len(cuento)} caracteres)")
+                        return cuento
+                    elif finish_reason == 1:  # STOP (éxito)
+                        print(f"{'='*60}\n")
+                        print(f"[OK] Cuento generado ({len(cuento)} caracteres)")
+                        return cuento
+                    else:
+                        # Otro finish_reason (SAFETY, etc.) pero hay contenido
+                        finish_reasons = {
+                            0: "FINISH_REASON_UNSPECIFIED",
+                            1: "STOP",
+                            2: "MAX_TOKENS",
+                            3: "SAFETY",
+                            4: "RECITATION",
+                            5: "OTHER"
+                        }
+                        razon = finish_reasons.get(finish_reason, f"UNKNOWN({finish_reason})")
+                        print(f"[ADVERTENCIA] Finish reason: {razon}, pero hay contenido generado")
+                        print(f"[INFO] Usando texto generado ({len(cuento)} caracteres)")
+                        print(f"{'='*60}\n")
+                        return cuento
+                else:
+                    # No hay texto generado
+                    finish_reasons = {
+                        0: "FINISH_REASON_UNSPECIFIED",
+                        1: "STOP",
+                        2: "MAX_TOKENS",
+                        3: "SAFETY",
+                        4: "RECITATION",
+                        5: "OTHER"
+                    }
+                    razon = finish_reasons.get(finish_reason, f"UNKNOWN({finish_reason})")
+                    raise ValueError(f"Gemini no generó contenido de texto. Finish reason: {razon}")
+                
+            except Exception as e_solicitud:
+                # Capturar información detallada del error
+                error_msg = str(e_solicitud)
+                print(f"\n{'='*60}")
+                print(f"[ERROR] Error en la solicitud:")
+                print(f"{'='*60}")
+                print(f"[ERROR] Mensaje: {error_msg}")
+                
+                # Intentar extraer más información del error
+                try:
+                    if hasattr(e_solicitud, 'response'):
+                        response = e_solicitud.response
+                        print(f"[ERROR] Status Code: {getattr(response, 'status_code', 'N/A')}")
+                except:
+                    pass
+                
+                print(f"{'='*60}\n")
+                raise e_solicitud
+            
+        except ImportError:
+            raise ImportError("google-generativeai no está instalado. Instala con: pip install google-generativeai")
+        except Exception as e:
+            # El error ya fue logueado en detalle dentro del try anterior
+            import traceback
+            traceback.print_exc()
+            # Fallback a generación con plantillas
+            return self._generar_con_plantillas(prompt)
+    
+    def generar_cuento(self, prompt: str, duracion: str = "medio") -> str:
+        """
+        Método principal para generar un cuento basado en el prompt.
+        Prioridad: OpenAI > ML > Plantillas
+        
+        Args:
+            prompt: Solicitud del usuario
+            duracion: Duración del cuento ("corto" ~2min, "medio" ~5min, "largo" ~10min)
             
         Returns:
             Cuento generado con estructura narrativa completa
@@ -279,8 +667,28 @@ class GeneradorCuento:
         if not prompt or len(prompt.strip()) == 0:
             prompt = "una aventura creativa"
         
-        # Prioridad 1: Modelo ML (si está disponible)
+        print(f"\n{'='*60}")
+        print(f"[INFO] Generando cuento con prompt:")
+        print(f"       '{prompt}'")
+        print(f"[INFO] Duración solicitada: {duracion}")
+        print(f"{'='*60}\n")
+        
+        # Prioridad 1: OpenAI API (principal)
+        if self.usar_api_openai and self.api_key:
+            print("[INFO] Usando OpenAI API (gpt-4o-mini)")
+            print(f"[INFO] Prompt enviado a OpenAI: '{prompt}'")
+            print(f"[INFO] Duración: {duracion}")
+            try:
+                cuento = self._generar_con_openai(prompt, duracion)
+                print(f"[OK] Cuento generado con OpenAI ({len(cuento)} caracteres)")
+                return cuento
+            except Exception as e:
+                print(f"[ERROR] Error con OpenAI: {e}, usando respaldo")
+        
+        # Prioridad 3: Modelo ML (si está disponible)
         if self.usar_ml and self.generador_ml and self.generador_ml.esta_disponible():
+            print("[INFO] Usando Modelo ML (GPT-2)")
+            print(f"[INFO] Prompt enviado al modelo ML: '{prompt}'")
             try:
                 cuento_ml = self.generador_ml.generar_cuento(
                     prompt, 
@@ -297,6 +705,7 @@ class GeneradorCuento:
                     # Al menos algunas palabras del prompt deben aparecer en el cuento
                     palabras_comunes = palabras_prompt.intersection(palabras_cuento)
                     if len(palabras_comunes) >= 2 or len(cuento_ml.strip()) > 200:
+                        print(f"[OK] Cuento generado con ML ({len(cuento_ml)} caracteres)")
                         return cuento_ml
                     else:
                         print(f"[ADVERTENCIA] Cuento generado no parece relacionado con el prompt")
@@ -304,13 +713,11 @@ class GeneradorCuento:
                 else:
                     print("[ADVERTENCIA] Modelo ML genero texto muy corto, usando respaldo")
             except Exception as e:
-                print(f"⚠️  Error con modelo ML: {e}, usando respaldo")
-        
-        # Prioridad 2: OpenAI API
-        if self.usar_api_openai and self.api_key:
-            return self._generar_con_openai(prompt)
+                print(f"[ERROR] Error con modelo ML: {e}, usando respaldo")
         
         # Prioridad 3: Plantillas (siempre disponible como respaldo)
+        print("[INFO] Usando generacion por plantillas")
+        print(f"[INFO] Prompt para plantillas: '{prompt}'")
         return self._generar_con_plantillas(prompt)
     
     def validar_estructura_cuento(self, cuento: str) -> bool:

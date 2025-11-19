@@ -120,29 +120,20 @@ Un sistema interactivo que demuestra creatividad mediante la generación de cuen
 ### 2.2 Componentes Detallados
 
 #### 2.2.1 Módulo de Interfaz de Usuario
-- **Responsabilidad:** Capturar input del usuario y mostrar resultados
-- **Tecnología:** HTML/CSS/JS o Tkinter
-- **Entradas:** Texto del prompt
-- **Salidas:** Cuento generado (texto), audio (reproducción)
+
+Este módulo tiene la **responsabilidad principal de capturar el input del usuario y mostrar los resultados** del proceso de generación. Se implementará utilizando tecnologías web estándar como **HTML, CSS y JavaScript**, o alternativamente mediante una interfaz de escritorio con **Tkinter** para aplicaciones Python nativas. El módulo recibe como **entrada el texto del prompt** ingresado por el usuario a través de un campo de texto, y proporciona como **salida el cuento generado en formato de texto** para su visualización, así como la **reproducción del audio** mediante el sistema de síntesis de voz. La interfaz debe ser intuitiva y proporcionar retroalimentación visual durante el proceso de generación.
 
 #### 2.2.2 Módulo de Procesamiento de Prompt
-- **Responsabilidad:** Analizar y estructurar la solicitud del usuario
-- **Funciones:**
-  - Extracción de palabras clave
-  - Identificación de tipo de solicitud (tema, personaje, situación)
-  - Preparación del prompt para el generador
+
+Este módulo tiene la **responsabilidad de analizar y estructurar la solicitud del usuario** antes de que sea procesada por el generador de cuentos. Sus **funciones principales incluyen la extracción de palabras clave** relevantes del prompt original, la **identificación del tipo de solicitud** recibida (ya sea un tema general, un personaje específico, una situación particular, o una combinación de estos elementos), y la **preparación del prompt optimizado** para el generador, asegurando que contenga toda la información necesaria y esté formateado de manera adecuada para obtener los mejores resultados en la generación del cuento.
 
 #### 2.2.3 Módulo Generador de Cuento
-- **Responsabilidad:** Crear narrativa original y estructurada
-- **Estrategia:**
-  - Usar modelo de lenguaje (API o local)
-  - Prompt engineering para asegurar estructura de cuento
-  - Inyección de creatividad mediante variabilidad
+
+Este módulo tiene la **responsabilidad central de crear narrativas originales y estructuradas** a partir del prompt procesado. Su **estrategia de implementación** se basa en el uso de **modelos de lenguaje**, ya sea mediante APIs externas (como OpenAI o Gemini) o modelos locales (como GPT-2 fine-tuneado), que permiten generar texto coherente y creativo. Para mejorar la calidad y coherencia de las narrativas generadas, **se incorporaron datos de cuentos reales para entrenar y refinar el modelo**, utilizando un conjunto de cuentos de referencia almacenados en la carpeta de datos del proyecto. Este proceso de **fine-tuning** permite que el modelo aprenda patrones narrativos, estructuras de cuentos tradicionales y estilos de escritura apropiados, mejorando significativamente la capacidad del sistema para generar cuentos que mantengan coherencia narrativa y características propias del género. El módulo implementa técnicas de **prompt engineering** para asegurar que cada cuento generado tenga una estructura narrativa completa con introducción, desarrollo y desenlace. Además, incorpora mecanismos de **inyección de creatividad mediante variabilidad**, utilizando parámetros como temperatura y sampling para garantizar que cada generación sea única y original, incluso cuando se utiliza el mismo prompt base.
 
 #### 2.2.4 Módulo de Text-to-Speech
-- **Responsabilidad:** Convertir texto a voz natural
-- **Tecnología:** gTTS (online) o pyttsx3 (offline)
-- **Configuración:** Voz en español, velocidad adecuada
+
+Este módulo tiene la **responsabilidad de convertir el texto generado a voz natural** para completar la experiencia narrativa del robot. Se implementará utilizando tecnologías de síntesis de voz como **gTTS (Google Text-to-Speech)** para soluciones online que requieren conectividad a internet, o **pyttsx3** como alternativa offline que funciona completamente local. El módulo está **configurado para utilizar voz en español** con una **velocidad de narración adecuada** que permita una comprensión clara del contenido, asegurando que la experiencia auditiva sea natural y agradable para el usuario que escucha el cuento generado.
 
 ---
 

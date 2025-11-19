@@ -278,15 +278,15 @@ class GeneradorML:
             prompt_mejorado = f"""Once upon a time, {prompt}. """
         else:
             # Detectar tema (solo si está en español)
-            tema = self._detectar_tema(prompt)
-            
-            # Obtener ejemplo relevante
-            ejemplo_cuento = self.cuentos_ejemplo.get(tema, self.cuentos_ejemplo.get("generico", ""))
-            
-            # Construir prompt mejorado con few-shot learning
-            if ejemplo_cuento:
-                # Prompt con ejemplo (few-shot learning)
-                prompt_mejorado = f"""Eres un narrador creativo de cuentos en español. Genera un cuento original con estructura narrativa completa (introducción, desarrollo, desenlace).
+        tema = self._detectar_tema(prompt)
+        
+        # Obtener ejemplo relevante
+        ejemplo_cuento = self.cuentos_ejemplo.get(tema, self.cuentos_ejemplo.get("generico", ""))
+        
+        # Construir prompt mejorado con few-shot learning
+        if ejemplo_cuento:
+            # Prompt con ejemplo (few-shot learning)
+            prompt_mejorado = f"""Eres un narrador creativo de cuentos en español. Genera un cuento original con estructura narrativa completa (introducción, desarrollo, desenlace).
 
 Ejemplo de cuento:
 {ejemplo_cuento}
@@ -294,9 +294,9 @@ Ejemplo de cuento:
 Ahora genera un cuento nuevo sobre: {prompt}
 
 Cuento:"""
-            else:
-                # Prompt sin ejemplo (fallback)
-                prompt_mejorado = f"""Eres un narrador creativo. Genera un cuento original en español con estructura narrativa completa (introducción, desarrollo, desenlace). El cuento debe tener entre 150 y 300 palabras.
+        else:
+            # Prompt sin ejemplo (fallback)
+            prompt_mejorado = f"""Eres un narrador creativo. Genera un cuento original en español con estructura narrativa completa (introducción, desarrollo, desenlace). El cuento debe tener entre 150 y 300 palabras.
 
 Tema: {prompt}
 

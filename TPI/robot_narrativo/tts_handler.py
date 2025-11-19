@@ -15,16 +15,24 @@ class TTSHandler:
     Soporta múltiples métodos: gTTS (online) y pyttsx3 (offline).
     """
     
-    def __init__(self, metodo: str = "gtts", idioma: str = "es"):
+    def __init__(self, metodo: str = "gtts", idioma: str = "es", 
+                 velocidad: str = "normal", volumen: float = 0.9, 
+                 tipo_voz: str = "femenina"):
         """
         Inicializa el manejador de TTS.
         
         Args:
             metodo: "gtts" para Google TTS (requiere internet) o "pyttsx3" para offline
             idioma: Código de idioma (por defecto "es" para español)
+            velocidad: "lenta", "normal", o "rapida"
+            volumen: Volumen de 0.0 a 1.0 (por defecto 0.9)
+            tipo_voz: "femenina", "masculina", o "neutra" (solo para pyttsx3)
         """
         self.metodo = metodo
         self.idioma = idioma
+        self.velocidad = velocidad
+        self.volumen = max(0.0, min(1.0, volumen))  # Asegurar rango válido
+        self.tipo_voz = tipo_voz
         self.temp_dir = Path(tempfile.gettempdir()) / "robot_narrativo_audio"
         self.temp_dir.mkdir(exist_ok=True)
     
@@ -43,7 +51,11 @@ class TTSHandler:
             from gtts import gTTS
             import io
             
-            tts = gTTS(text=texto, lang=self.idioma, slow=False)
+            # gTTS solo soporta slow (True/False), no tiene control fino de velocidad
+            # Convertir nuestra velocidad a slow
+            slow = self.velocidad == "lenta"
+            
+            tts = gTTS(text=texto, lang=self.idioma, slow=slow)
             tts.save(output_path)
             return True
         except Exception as e:
@@ -68,15 +80,45 @@ class TTSHandler:
             
             # Configurar propiedades de voz
             voices = engine.getProperty('voices')
-            # Intentar encontrar una voz en español
-            for voice in voices:
-                if 'spanish' in voice.name.lower() or 'español' in voice.name.lower():
-                    engine.setProperty('voice', voice.id)
-                    break
             
-            # Configurar velocidad y volumen
-            engine.setProperty('rate', 150)  # Velocidad de habla
-            engine.setProperty('volume', 0.9)  # Volumen
+            # Buscar voz según tipo solicitado y idioma
+            voz_encontrada = False
+            for voice in voices:
+                nombre_voz = voice.name.lower()
+                es_espanol = 'spanish' in nombre_voz or 'español' in nombre_voz or 'es-' in nombre_voz
+                
+                if es_espanol:
+                    # Filtrar por tipo de voz si está disponible
+                    if self.tipo_voz == "femenina":
+                        if 'female' in nombre_voz or 'femenina' in nombre_voz or 'mujer' in nombre_voz:
+                            engine.setProperty('voice', voice.id)
+                            voz_encontrada = True
+                            break
+                    elif self.tipo_voz == "masculina":
+                        if 'male' in nombre_voz or 'masculina' in nombre_voz or 'hombre' in nombre_voz:
+                            engine.setProperty('voice', voice.id)
+                            voz_encontrada = True
+                            break
+                    else:  # neutra o cualquier voz en español
+                        if not voz_encontrada:
+                            engine.setProperty('voice', voice.id)
+                            voz_encontrada = True
+            
+            # Si no se encontró voz en español, usar la primera disponible
+            if not voz_encontrada and voices:
+                engine.setProperty('voice', voices[0].id)
+            
+            # Configurar velocidad según parámetro
+            velocidades = {
+                "lenta": 100,
+                "normal": 150,
+                "rapida": 200
+            }
+            rate = velocidades.get(self.velocidad, 150)
+            engine.setProperty('rate', rate)
+            
+            # Configurar volumen
+            engine.setProperty('volume', self.volumen)
             
             # Guardar en archivo
             engine.save_to_file(texto, output_path)
@@ -148,6 +190,7 @@ class TTSHandler:
         # Remover caracteres especiales problemáticos
         texto = texto.replace("\n\n", ". ")
         texto = texto.replace("\n", " ")
+        
         # Asegurar puntos al final de oraciones
         if not texto.strip().endswith((".", "!", "?")):
             texto = texto.strip() + "."

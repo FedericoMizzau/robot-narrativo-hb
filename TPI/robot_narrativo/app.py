@@ -16,22 +16,39 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'robot-narrativo-secret-key')
 
 # Inicializar componentes
-# Configuración: usar OpenAI API si está disponible, sino usar plantillas
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-usar_openai = OPENAI_API_KEY is not None and len(OPENAI_API_KEY.strip()) > 0
+# Configuración: Prioridad OpenAI > ML > Plantillas
 
-# Configurar generador: Prioridad ML > OpenAI > Plantillas
-# Usar modelo base GPT-2 para mejor calidad (el entrenado puede tener problemas)
-# Si quieres usar el modelo entrenado, cambia "gpt2" por "./modelo_cuentos_entrenado"
+# Verificar OpenAI API (prioridad 1)
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if OPENAI_API_KEY:
+    OPENAI_API_KEY = OPENAI_API_KEY.strip()
+usar_openai = OPENAI_API_KEY is not None and len(OPENAI_API_KEY) > 0
+
+# Gemini desactivado (API key removida)
+usar_gemini = False
+GEMINI_API_KEY = None
+
+# Configurar generador: Prioridad OpenAI > ML > Plantillas
 modelo_entrenado_path = "./modelo_cuentos_entrenado"
 usar_modelo_entrenado = False  # Desactivado temporalmente para mejor calidad
-# usar_modelo_entrenado = os.path.exists(modelo_entrenado_path) and os.path.isdir(modelo_entrenado_path)
+
+# Verificar estado de APIs
+if usar_openai:
+    print("=" * 60)
+    print("[OK] OpenAI API configurada - Se usara gpt-4o-mini (principal)")
+    print(f"[INFO] API Key: {'*' * 20}...{OPENAI_API_KEY[-4:] if len(OPENAI_API_KEY) > 4 else '****'}")
+    print("     Prioridad: OpenAI > ML > Plantillas")
+    print("=" * 60)
+else:
+    print("[INFO] OpenAI API no configurada - Se usara modelo ML o plantillas")
 
 generador = GeneradorCuento(
+    usar_api_gemini=False,  # Gemini desactivado
+    gemini_api_key=None,
     usar_api_openai=usar_openai, 
     api_key=OPENAI_API_KEY,
-    usar_ml=True,  # Activar modelo ML
-    modelo_ml="gpt2" if not usar_modelo_entrenado else modelo_entrenado_path  # Usar GPT-2 base para mejor calidad
+    usar_ml=not usar_openai,  # Solo usar ML si no hay OpenAI disponible
+    modelo_ml="gpt2" if not usar_modelo_entrenado else modelo_entrenado_path
 )
 
 # Intentar usar gTTS, si no está disponible usar pyttsx3
@@ -42,7 +59,14 @@ except ImportError:
     metodo_tts = "pyttsx3"
     print("⚠️  gTTS no disponible, usando pyttsx3 (offline)")
 
-tts_handler = TTSHandler(metodo=metodo_tts, idioma="es")
+# Configuración de TTS (puedes ajustar estos valores)
+tts_handler = TTSHandler(
+    metodo=metodo_tts, 
+    idioma="es",
+    velocidad="normal",  # Opciones: "lenta", "normal", "rapida"
+    volumen=0.9,  # Rango: 0.0 a 1.0
+    tipo_voz="masculina"  # Opciones: "femenina", "masculina", "neutra" (solo pyttsx3)
+)
 
 
 @app.route('/')
@@ -62,6 +86,12 @@ def generar_cuento():
     try:
         data = request.get_json()
         prompt = data.get('prompt', '').strip()
+        duracion = data.get('duracion', 'medio').strip().lower()
+        
+        # Validar duración
+        duraciones_validas = ['corto', 'medio', 'largo']
+        if duracion not in duraciones_validas:
+            duracion = 'medio'  # Valor por defecto
         
         if not prompt:
             return jsonify({
@@ -70,7 +100,7 @@ def generar_cuento():
         
         # Generar cuento (sin truncar el prompt)
         try:
-            cuento = generador.generar_cuento(prompt)
+            cuento = generador.generar_cuento(prompt, duracion)
         except Exception as gen_error:
             print(f"[ERROR] Error en generación: {gen_error}")
             import traceback
@@ -100,6 +130,7 @@ def generar_cuento():
         respuesta = {
             'cuento': cuento,
             'prompt': prompt,
+            'duracion': duracion,
             'audio_generado': ruta_audio is not None,
         }
         
@@ -174,18 +205,25 @@ def health_check():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🤖 ROBOT NARRATIVO GENERATIVO - Iniciando...")
+    print("ROBOT NARRATIVO GENERATIVO - Iniciando...")
     print("=" * 60)
-    if usar_modelo_entrenado:
-        print(f"📝 Generador: Modelo ML Entrenado ({modelo_entrenado_path})")
-    elif usar_openai:
-        print(f"📝 Generador: OpenAI API")
+    
+    # Mostrar configuración del generador
+    if usar_openai:
+        print(f"[OK] Generador: OpenAI API (gpt-4o-mini)")
+        print(f"     Prioridad: OpenAI > ML > Plantillas")
+    elif usar_modelo_entrenado:
+        print(f"[INFO] Generador: Modelo ML Entrenado ({modelo_entrenado_path})")
+        print(f"     Prioridad: ML > Plantillas")
     else:
-        print(f"📝 Generador: Modelo ML Base (GPT-2)")
-    print(f"🔊 TTS: {tts_handler.metodo.upper()}")
+        print(f"[INFO] Generador: Modelo ML Base (GPT-2)")
+        print(f"     Prioridad: ML > Plantillas")
+    
+    print(f"[OK] TTS: {tts_handler.metodo.upper()}")
     print("=" * 60)
-    print("\n🌐 Servidor disponible en: http://localhost:5000")
-    print("📖 Abre tu navegador y navega a la URL anterior\n")
+    print("\n[INFO] Servidor disponible en: http://localhost:5000")
+    print("[INFO] Abre tu navegador y navega a la URL anterior")
+    print("[INFO] Los prompts y metodos usados se mostraran en la consola\n")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
 
