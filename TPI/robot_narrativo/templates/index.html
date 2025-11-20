@@ -4,13 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creatrón Narrativo V1</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='creatron.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='creatron.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Creatrón Narrativo V1</h1>
-            <p class="subtitle">Demostrando Creatividad a través de la Narrativa</p>
+            <div class="header-content">
+                <img src="{{ url_for('static', filename='creatron.png') }}" alt="Creatrón" class="header-logo">
+                <div class="header-text">
+                    <h1>Creatrón Narrativo V1</h1>
+                    <p class="subtitle">Demostrando Creatividad a través de la Narrativa</p>
+                </div>
+            </div>
         </header>
 
         <main>
